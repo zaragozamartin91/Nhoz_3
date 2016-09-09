@@ -82,6 +82,7 @@ public class JavadbfTest {
 
 		Object[] rowData;
 		while ((rowData = reader.nextRecord()) != null) {
+			rowData[9] = new Double("999.99");
 			writer.addRecord(rowData);
 		}
 
