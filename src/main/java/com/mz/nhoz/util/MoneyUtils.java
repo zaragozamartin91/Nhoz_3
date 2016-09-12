@@ -17,28 +17,11 @@ import com.mz.nhoz.util.exception.MoneyUtilsException;
  *
  */
 public class MoneyUtils {
-	private static Map<DecimalSymbol, Locale> decimalLocaleMap = new HashMap<DecimalSymbol, Locale>();
-
 	/**
 	 * [-+]?[0-9]*[\\.,]?[0-9]+[\\.,]?[0-9]*
 	 */
 	public static final String NUMBER_PATTERN_REGEX = "[-+]?[0-9]*[\\.,]?[0-9]+[\\.,]?[0-9]*";
 	private static final Pattern NUMBER_PATTERN = Pattern.compile(NUMBER_PATTERN_REGEX);
-
-	static {
-		decimalLocaleMap.put(DecimalSymbol.DOT, Locale.US);
-		decimalLocaleMap.put(DecimalSymbol.COMMA, Locale.ITALY);
-	}
-
-	/**
-	 * Retorna el {@link Locale} a utilizar a partir del simbolo decimal usado.
-	 * 
-	 * @param decimalSymbol
-	 * @return
-	 */
-	public static Locale getLocaleFromDecimalSymbol(DecimalSymbol symbol) {
-		return decimalLocaleMap.get(symbol);
-	}
 
 	/**
 	 * Remueve el simbolo de precio '$' al principio del string.
@@ -113,7 +96,7 @@ public class MoneyUtils {
 			return parsePriceAsDouble(obj, Locale.US);
 		}
 
-		return parsePriceAsDouble(obj, decimalLocaleMap.get(decimalSymbol[0]));
+		return parsePriceAsDouble(obj, decimalSymbol[0].locale);
 	}
 
 	public static void main(String[] args) {

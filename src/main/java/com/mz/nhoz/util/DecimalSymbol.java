@@ -1,11 +1,13 @@
 package com.mz.nhoz.util;
 
+import java.util.Locale;
+
 public enum DecimalSymbol {
-	DOT("."), COMMA(",");
+	DOT(Locale.US), COMMA(Locale.ITALY);
 
-	public final String symbol;
+	public final Locale locale;
 
-	private DecimalSymbol(String symbol) {
-		this.symbol = symbol;
+	private DecimalSymbol(Locale symbol) {
+		this.locale = symbol;
 	}
 }
