@@ -1,4 +1,4 @@
-package com.mz.nhoz;
+package com.mz.nhoz.dans;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +17,10 @@ import nl.knaw.dans.common.dbflib.Value;
 import nl.knaw.dans.common.dbflib.Version;
 
 import org.junit.Test;
+
+import com.mz.nhoz.dans.DbfFieldJavaValuePair;
+import com.mz.nhoz.dans.DbfRecordBuilder;
+import com.mz.nhoz.dans.DbfRecordValueParser;
 
 public class ReadDbfTest {
 	private DbfRecordValueParser recordParser = new DbfRecordValueParser();

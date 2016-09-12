@@ -1,4 +1,4 @@
-package com.mz.nhoz;
+package com.mz.nhoz.dans;
 
 import java.util.HashMap;
 import java.util.List;
