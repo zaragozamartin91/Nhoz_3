@@ -10,4 +10,8 @@ public class ExcelReaderException extends Exception {
 		super(cause);
 	}
 
+	public ExcelReaderException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
 }
