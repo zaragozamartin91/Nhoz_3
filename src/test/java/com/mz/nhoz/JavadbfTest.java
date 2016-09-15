@@ -1,13 +1,17 @@
 package com.mz.nhoz;
 
+import static org.junit.Assert.*;
+
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
 import org.junit.Test;
 
+import com.linuxense.javadbf.DBFException;
 import com.linuxense.javadbf.DBFField;
 import com.linuxense.javadbf.DBFReader;
 import com.linuxense.javadbf.DBFWriter;
@@ -31,7 +35,7 @@ public class JavadbfTest {
 			// do something with it if you want
 			// refer the JavaDoc API reference for more details
 			//
-			System.out.println(field.getName());
+			System.out.println(field.getName() + ":" + field.getDataType());
 		}
 
 		// Now, lets us start reading the rows
@@ -45,6 +49,25 @@ public class JavadbfTest {
 		// By now, we have itereated through all of the rows
 
 		dbfInputStream.close();
+	}
+	
+	@Test
+	public void testReadInterrupted() throws IOException {
+
+		FileInputStream dbfInputStream = new FileInputStream(new File("testFiles/LISTAPRE.DBF"));
+		
+		DBFReader reader1 = new DBFReader(dbfInputStream);
+		Object[] record11 = reader1.nextRecord();
+		
+//		DBFReader reader2 = new DBFReader(dbfInputStream);
+//		Object[] record21 = reader2.nextRecord();
+		
+		System.out.println(Arrays.asList(record11));
+//		System.out.println(Arrays.asList(record21));
+		
+
+		dbfInputStream.close();
+	
 	}
 
 	@Test
@@ -87,7 +110,10 @@ public class JavadbfTest {
 
 		FileOutputStream dbfOutputStream = new FileOutputStream(outFile.getAbsolutePath());
 		writer.write(dbfOutputStream);
+
 		dbfOutputStream.close();
+
+		assertEquals(reader.getRecordCount(), new DBFReader(new FileInputStream(outFile)).getRecordCount());
 
 		dbfInputStream.close();
 	}
