@@ -3,9 +3,13 @@ package com.mz.nhoz.xls;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.util.Iterator;
 
 import org.junit.Test;
 
+import com.mz.nhoz.util.DecimalSymbol;
+import com.mz.nhoz.util.MoneyUtils;
+import com.mz.nhoz.util.exception.MoneyUtilsException;
 import com.mz.nhoz.xls.exception.ExcelReaderException;
 import com.mz.nhoz.xls.util.exception.CellParserException;
 
@@ -39,6 +43,21 @@ public class ExcelReaderTest {
 		}
 
 		assertEquals(4, rowCount);
+	}
+
+	@Test
+	public void testReadProviderFile() throws ExcelReaderException, CellParserException, MoneyUtilsException {
+		ExcelReader excelReader = new ExcelReader(new File("testFiles/prov14.xlsx"));
+
+		Iterator<ExcelRecord> xlsRowIterator = excelReader.iterator();
+		xlsRowIterator.next();
+		while (xlsRowIterator.hasNext()) {
+			ExcelRecord excelRecord = (ExcelRecord) xlsRowIterator.next();
+			Object priceValue = excelRecord.getCellValue(1);
+			String noSymbolPriceValue = MoneyUtils.removePriceSymbol(priceValue.toString());
+			System.out.println(MoneyUtils.parsePriceAsDouble(noSymbolPriceValue, DecimalSymbol.DOT));
+		}
+
 	}
 
 }

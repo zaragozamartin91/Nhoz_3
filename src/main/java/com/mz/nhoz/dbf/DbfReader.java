@@ -100,14 +100,24 @@ public class DbfReader {
 	 * @throws IllegalStateException
 	 *             Si el archivo ya fue leido o si fue cerrado.
 	 */
-	public void forEach(DbfAction dbfAction) throws DbfReaderException, DBFException {
+	public void forEach(DbfAction dbfAction) throws DbfReaderException {
 		if (closed.compareAndSet(false, true)) {
 			DBFField[] fields = getFields();
 			Object[] rowObjects;
 
-			while ((rowObjects = reader.nextRecord()) != null) {
-				DbfRecord dbfRecord = new DbfRecord(fields, rowObjects);
-				dbfAction.run(dbfRecord);
+			int recordIndex = 0;
+			while (true) {
+				try {
+					rowObjects = reader.nextRecord();
+					if (rowObjects == null) {
+						break;
+					}
+					DbfRecord dbfRecord = new DbfRecord(fields, rowObjects);
+					dbfAction.run(dbfRecord);
+				} catch (DBFException e) {
+					throw new DbfReaderException("Error al leer el registro " + recordIndex, e);
+				}
+				++recordIndex;
 			}
 		} else {
 			throw new IllegalStateException("El archivo ya fue leido.");

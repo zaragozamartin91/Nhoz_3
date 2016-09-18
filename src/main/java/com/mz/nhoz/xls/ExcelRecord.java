@@ -20,6 +20,9 @@ public class ExcelRecord {
 		this.row = row;
 	}
 
+	private ExcelRecord() {
+	}
+
 	/**
 	 * Obtiene la cantidad de columnas del registro/fila.
 	 * 
@@ -34,12 +37,39 @@ public class ExcelRecord {
 	 * 
 	 * @param columnIndex
 	 *            Indice de columna de celda (inicia en el 0).
-	 * @return Valor de celda. Null en caso que la celda no exista o no tenga valor.
+	 * @return Valor de celda. Null en caso que la celda no exista o no tenga
+	 *         valor.
 	 * @throws CellParserException
 	 *             En caso que el contenido de la celda no sea parseable.
 	 */
 	public Object getCellValue(int columnIndex) throws CellParserException {
 		Cell cell = row.getCell(columnIndex, Row.RETURN_BLANK_AS_NULL);
 		return (cell == null) ? null : CELL_PARSER.parseValue(cell);
+	}
+
+	/**
+	 * Retorna true si el registro es nulo o vacio.
+	 * 
+	 * @see ExcelRecord#newNullRecord()
+	 * 
+	 * @return true si el registro es nulo o vacio, false en caso contrario.
+	 */
+	public boolean isNull() {
+		return row == null;
+	}
+	
+	public boolean hasData() {
+		return !isNull();
+	}
+
+	/**
+	 * Crea un nuevo registro nulo o vacio.
+	 * 
+	 * @see ExcelRecord#isNull()
+	 * 
+	 * @return nuevo registro nulo o vacio. 
+	 */
+	public static ExcelRecord newNullRecord() {
+		return new ExcelRecord();
 	}
 }

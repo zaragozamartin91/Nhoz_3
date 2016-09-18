@@ -1,4 +1,4 @@
-package com.mz.nhoz;
+package com.mz.nhoz.util;
 
 import static org.junit.Assert.*;
 
