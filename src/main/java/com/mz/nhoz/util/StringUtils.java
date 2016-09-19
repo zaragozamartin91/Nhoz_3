@@ -7,19 +7,11 @@ public class StringUtils {
 	}
 
 	public static boolean nullOrEmpty(String s) {
-		return s == null || s.contentEquals("");
-	}
-
-	public static boolean nullOrEmpty(Object o) {
-		return o == null || o.toString().contentEquals("");
+		return s == null || s.trim().isEmpty();
 	}
 
 	public static boolean notNullNorEmpty(String s) {
-		return s != null && !s.contentEquals("");
-	}
-
-	public static boolean empty(String s) {
-		return s.contentEquals("");
+		return !nullOrEmpty(s);
 	}
 
 	public static StringPair parsePair(String line, String delim) {
@@ -35,19 +27,19 @@ public class StringUtils {
 	 * comparar.
 	 * 
 	 * @param first
-	 *            - Primer objeto.
+	 *            Primer objeto.
 	 * @param second
-	 *            - Segundo objeto.
+	 *            Segundo objeto.
 	 * @return Si el contenido de <code>first.toString().trim()</code> coincide
 	 *         con el de <code>second.toString().trim()</code> , false en caso
 	 *         contrario.
 	 */
-	public static boolean tryCompareObjectsAsStrings(Object first, Object second) {
+	public static boolean equalAsStrings(Object first, Object second) {
 		try {
-			final String s_recordValue = first.toString().trim();
-			final String s_compareValue = second.toString().trim();
+			final String strRecordValue = first.toString().trim();
+			final String strCompareValue = second.toString().trim();
 
-			return s_compareValue.contentEquals(s_recordValue);
+			return strCompareValue.contentEquals(strRecordValue);
 		} catch (Exception e) {
 			return false;
 		}
@@ -58,10 +50,11 @@ public class StringUtils {
 	 * Si el string original es "0" -> se devuelve "0".
 	 * 
 	 * @param s
-	 *            - String a quitar ceros.
+	 *            String a quitar ceros.
 	 * @return Nuevo string sin ceros que lo encabecen.
 	 */
 	public static String removeLeadingZeroes(String s) {
+//		return s.replaceFirst("^0+", "");
 		return s.replaceFirst("^0+(?!$)", "");
 	}
 
