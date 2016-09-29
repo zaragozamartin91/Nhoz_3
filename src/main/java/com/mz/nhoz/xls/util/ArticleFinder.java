@@ -33,8 +33,8 @@ public class ArticleFinder {
 	 * 
 	 * @param articleId
 	 *            Id de articulo a buscar.
-	 * @return Articulo encontrado. Si el articulo no se encuentra,
-	 *         {@link ExcelRecord#newNullRecord()}.
+	 * @return Articulo encontrado. {@link ExcelRecord#newNullRecord()} Si el
+	 *         articulo no se encuentra.
 	 * @see ExcelRecord#isNull()
 	 * @throws ArticleFinderException
 	 *             En caso que no se pueda obtener los valores de algun
@@ -50,6 +50,11 @@ public class ArticleFinder {
 			} catch (CellParserException e) {
 				throw new ArticleFinderException("Error al obtener el codigo de articulo " + articleIndex);
 			}
+
+			if (cellValue == null) {
+				continue;
+			}
+
 			if (equalIds(articleId, cellValue.toString())) {
 				return excelRecord;
 			}

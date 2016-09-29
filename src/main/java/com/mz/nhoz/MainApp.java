@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 
 import com.mz.nhoz.config.Configuration;
@@ -44,9 +45,12 @@ public class MainApp {
 		String priceSymbol = "$";
 		DecimalSymbol decimalSymbol = configuration.getDecimalSymbol();
 		String xlsFilePath = configuration.getXlsFilePath();
+		
+		
+		
 		String orgDbfFilePath = configuration.getDbfFilePath();
 		String destDbfFilePath = tempFileName(orgDbfFilePath);
-		
+
 		writeDbfFromXls(providerId, priceSymbol, decimalSymbol, xlsFilePath, orgDbfFilePath, destDbfFilePath);
 
 		try {
@@ -57,12 +61,12 @@ public class MainApp {
 	}
 
 	private String tempFileName(String orgDbfFilePath) {
-		String[] split = pathNoExtensionPattern.split(bakFileName(orgDbfFilePath));
+		String[] split = pathNoExtensionPattern.split(timestampFileName(orgDbfFilePath));
 
 		return split[0] + "_TEMP" + ".DBF";
 	}
 
-	private String bakFileName(String orgDbfFilePath) {
+	private String timestampFileName(String orgDbfFilePath) {
 		String[] split = pathNoExtensionPattern.split(orgDbfFilePath);
 
 		return split[0] + "_" + new GregorianCalendar().getTimeInMillis() + ".DBF";
@@ -93,12 +97,15 @@ public class MainApp {
 					try {
 						ExcelRecord excelArticleRecord = articleFinder.find(dbfRecordArticleId.toString());
 						if (excelArticleRecord.hasData()) {
-							String rawPriceValue = excelArticleRecord.getCellValue(1).toString();
-							String noSymbolPriceValue = removePriceSymbol(rawPriceValue, priceSymbol);
-							Double priceValue = parsePriceAsDouble(noSymbolPriceValue, decimalSymbol);
-							dbfRecord.setValue("PRECIOUNI", priceValue);
+							Object rawPriceValue = excelArticleRecord.getCellValue(1);
 
-							logger.debug("Articulo " + absoluteArticleId + " modificado");
+							if (rawPriceValue != null) {
+								String stringRawPriceValue = rawPriceValue.toString();
+								String noSymbolStringPriceValue = removePriceSymbol(stringRawPriceValue, priceSymbol);
+								Double priceValue = parsePriceAsDouble(noSymbolStringPriceValue, decimalSymbol);
+								dbfRecord.setValue("PRECIOUNI", priceValue);
+								logger.debug("Articulo " + absoluteArticleId + " modificado");
+							}
 						}
 
 					} catch (ArticleFinderException e) {
@@ -122,8 +129,12 @@ public class MainApp {
 		logger.info("Escribiendo archivo dbf...");
 		dbfWriter.close();
 		logger.info("Fin de escritura de archivo dbf");
-		
-		dbfReader.close();
+
+		try {
+			// INTENTO CERRAR NUEVAMENTE POR LAS DUDAS...
+			dbfReader.close();
+		} catch (Exception e) {
+		}
 	}
 
 	/**
@@ -135,11 +146,11 @@ public class MainApp {
 	 */
 	private void swapFiles(final String orgDbfFilePath) throws InterruptedException {
 		File orgFile = new File(orgDbfFilePath);
-		boolean renameSuccess = orgFile.renameTo(new File(bakFileName(orgDbfFilePath)));
+		boolean renameSuccess = orgFile.renameTo(new File(timestampFileName(orgDbfFilePath)));
 		if (renameSuccess) {
-			logger.debug("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + bakFileName(orgDbfFilePath));
+			logger.debug("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + timestampFileName(orgDbfFilePath));
 		}
-		
+
 		Thread.sleep(1000);
 
 		File destFile = new File(tempFileName(orgDbfFilePath));
