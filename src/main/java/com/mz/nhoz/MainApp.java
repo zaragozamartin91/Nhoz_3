@@ -166,21 +166,51 @@ public class MainApp {
 			final String orgDbfFilePath) /* throws InterruptedException */ {
 		logger.info("INTERCAMBIANDO ARCHIVOS...");
 
-		File orgFile = new File(orgDbfFilePath);
-		boolean renameSuccess = orgFile.renameTo(new File(timestampFileName(orgDbfFilePath)));
-		if (renameSuccess) {
-			logger.info("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + timestampFileName(orgDbfFilePath));
-
-			// Thread.sleep(1000);
-
-			File destFile = new File(tempFileName(orgDbfFilePath));
-			renameSuccess = destFile.renameTo(new File(orgDbfFilePath));
-			if (renameSuccess) {
-				logger.info("ARCHIVO " + tempFileName(orgDbfFilePath) + " RENOMBRADO EXITOSAMENTE A " + orgDbfFilePath);
-			}
-		}
+		trySwapFiles(orgDbfFilePath, 1);
 
 		logger.info("FIN INTERCAMBIO DE ARCHIVOS...");
+	}
+
+	private void trySwapFiles(final String orgDbfFilePath, int tryCount) {
+		if (tryCount > 5) {
+			logger.error("LIMITE DE INTENTO DE RENOMBRAR ARCHIVOS SUPERADO.");
+			return;
+		}
+		logger.info("INTENTO " + tryCount + " DE INTERCAMBIO DE ARCHIVOS...");
+		int nextTry = tryCount + 1;
+
+		File orgFile = new File(orgDbfFilePath);
+		File timestampFile = new File(timestampFileName(orgDbfFilePath));
+		File tempFile = new File(tempFileName(orgDbfFilePath));
+
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+		}
+
+		boolean orgFileRenameSuccess = orgFile.renameTo(timestampFile);
+		if (orgFileRenameSuccess) {
+			logger.info("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + timestampFileName(orgDbfFilePath));
+
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+			}
+
+			boolean tempFileRenameSuccess = tempFile.renameTo(orgFile);
+			if (tempFileRenameSuccess) {
+				logger.info("ARCHIVO " + tempFile.getAbsolutePath() + " RENOMBRADO EXITOSAMENTE A " + orgDbfFilePath);
+			} else {
+				// SI FALLE EN RENOMBRAR EL ARCHIVO NUEVO DE LISTAPRE AL NOMBRE
+				// ORIGINAL "LISTAPRE-DBF" ENTONCES HAGO UN ROLLBACK RENOMBRANDO
+				// EL VIEJO LISTAPRE AL NOMBRE "LISTAPRE.DBF".
+				logger.info("RESTAURANDO NOMBRE DE ARCHIVO VIEJO...");
+				timestampFile.renameTo(orgFile);
+				trySwapFiles(orgDbfFilePath, nextTry);
+			}
+		} else {
+			trySwapFiles(orgDbfFilePath, nextTry);
+		}
 	}
 
 	public static void main(String[] args) {
