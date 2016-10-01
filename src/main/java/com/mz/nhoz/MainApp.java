@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.regex.Pattern;
 
@@ -69,7 +70,7 @@ public class MainApp {
 		String timestampFileName = timestampFileName(orgDbfFilePath);
 		String[] split = pathNoExtensionPattern.split(timestampFileName);
 
-		return split[0] + "_TEMP" + ".DBF";
+		return split[0] + "TEMP" + ".DBF";
 	}
 
 	private String timestampFileName(String orgDbfFilePath) {
@@ -79,8 +80,10 @@ public class MainApp {
 		int year = today.get(YEAR);
 		int month = today.get(MONTH) + 1;
 		int day = today.get(DATE);
+		int hour = today.get(Calendar.HOUR_OF_DAY);
+		int minute = today.get(Calendar.MINUTE);
 
-		return split[0] + "_" + year + month + day + ".DBF";
+		return split[0] + "-" + year + "-" + month + "-" + day + "-" + hour + "-" + minute + ".DBF";
 	}
 
 	/**
@@ -166,15 +169,15 @@ public class MainApp {
 		File orgFile = new File(orgDbfFilePath);
 		boolean renameSuccess = orgFile.renameTo(new File(timestampFileName(orgDbfFilePath)));
 		if (renameSuccess) {
-			logger.debug("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + timestampFileName(orgDbfFilePath));
-		}
+			logger.info("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + timestampFileName(orgDbfFilePath));
 
-		// Thread.sleep(1000);
+			// Thread.sleep(1000);
 
-		File destFile = new File(tempFileName(orgDbfFilePath));
-		renameSuccess = destFile.renameTo(new File(orgDbfFilePath));
-		if (renameSuccess) {
-			logger.debug("ARCHIVO " + tempFileName(orgDbfFilePath) + " RENOMBRADO EXITOSAMENTE A " + orgDbfFilePath);
+			File destFile = new File(tempFileName(orgDbfFilePath));
+			renameSuccess = destFile.renameTo(new File(orgDbfFilePath));
+			if (renameSuccess) {
+				logger.info("ARCHIVO " + tempFileName(orgDbfFilePath) + " RENOMBRADO EXITOSAMENTE A " + orgDbfFilePath);
+			}
 		}
 
 		logger.info("FIN INTERCAMBIO DE ARCHIVOS...");
