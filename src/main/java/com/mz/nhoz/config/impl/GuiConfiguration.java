@@ -27,15 +27,15 @@ public class GuiConfiguration extends AbstractConfiguration {
 			throw new ConfigurationException("PROCESO DE CONFIGURAICON CANCELADO");
 		}
 
-		setProviderId(getProviderId("INGRESE EL CODIGO DE PROVEEDOR"));
+		setProviderId(readProviderId("INGRESE EL CODIGO DE PROVEEDOR"));
 
-		setDecimalSymbol(getDecimalSymbol("INGRESE EL SEPARADOR DECIMAL"));
+		setDecimalSymbol(readDecimalSymbol("INGRESE EL SEPARADOR DECIMAL"));
 	}
 
-	private DecimalSymbol getDecimalSymbol(String message) {
+	private DecimalSymbol readDecimalSymbol(String message) {
 		String decimalDelim = JOptionPane.showInputDialog(message, ".");
 		if (StringUtils.nullOrEmpty(decimalDelim)) {
-			return getDecimalSymbol(message);
+			return readDecimalSymbol(message);
 		}
 
 		DecimalSymbol decimalSymbol = null;
@@ -48,7 +48,7 @@ public class GuiConfiguration extends AbstractConfiguration {
 		}
 
 		if (decimalSymbol == null) {
-			return getDecimalSymbol(message);
+			return readDecimalSymbol(message);
 		}
 
 		return decimalSymbol;
@@ -71,11 +71,11 @@ public class GuiConfiguration extends AbstractConfiguration {
 		}
 	}
 
-	private String getProviderId(String message) {
+	private String readProviderId(String message) {
 		String provider = JOptionPane.showInputDialog(message);
 
 		if (StringUtils.nullOrEmpty(provider)) {
-			return getProviderId(message);
+			return readProviderId(message);
 		}
 
 		return provider;

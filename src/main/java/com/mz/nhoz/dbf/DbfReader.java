@@ -42,8 +42,6 @@ public class DbfReader {
 			reader = new DBFReader(fileInputStream);
 		} catch (DBFException e) {
 			throw new DbfReaderException("Error al abrir el archivo dbf", e);
-		} catch (FileNotFoundException e) {
-			throw e;
 		}
 	}
 
@@ -57,11 +55,7 @@ public class DbfReader {
 	 */
 	public void close() throws DbfReaderException {
 		if (closed.compareAndSet(false, true)) {
-			try {
-				fileInputStream.close();
-			} catch (IOException e) {
-				throw new DbfReaderException("Error al cerrar el archivo dbf", e);
-			}
+			doClose();
 		} else {
 			throw new IllegalStateException("El archivo ya fue cerrado anteriormente!");
 		}
@@ -119,6 +113,8 @@ public class DbfReader {
 				}
 				++recordIndex;
 			}
+
+			doClose();
 		} else {
 			throw new IllegalStateException("El archivo ya fue leido.");
 		}
@@ -132,5 +128,13 @@ public class DbfReader {
 	 */
 	public boolean isClosed() {
 		return closed.get();
+	}
+
+	private void doClose() throws DbfReaderException {
+		try {
+			fileInputStream.close();
+		} catch (IOException e) {
+			throw new DbfReaderException("Error al cerrar el archivo dbf", e);
+		}
 	}
 }

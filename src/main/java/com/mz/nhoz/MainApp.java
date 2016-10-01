@@ -2,6 +2,9 @@ package com.mz.nhoz;
 
 import static com.mz.nhoz.util.MoneyUtils.parsePriceAsDouble;
 import static com.mz.nhoz.util.MoneyUtils.removePriceSymbol;
+import static java.util.Calendar.DATE;
+import static java.util.Calendar.MONTH;
+import static java.util.Calendar.YEAR;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -10,7 +13,6 @@ import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.regex.Pattern;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 
 import com.mz.nhoz.config.Configuration;
@@ -35,33 +37,37 @@ public class MainApp {
 	static Logger logger = Logger.getLogger(MainApp.class);
 	static Pattern pathNoExtensionPattern = Pattern.compile(Pattern.quote(".") + "DBF", Pattern.CASE_INSENSITIVE);
 
-	Configuration configuration;
+	Configuration configuration = new GuiConfiguration();
 
 	void run() throws ConfigurationException, FileNotFoundException, ExcelReaderException, DbfReaderException, IOException, DbfWriterException {
-		configuration = new GuiConfiguration();
 		configuration.load();
 
 		String providerId = configuration.getProviderId();
 		String priceSymbol = "$";
 		DecimalSymbol decimalSymbol = configuration.getDecimalSymbol();
 		String xlsFilePath = configuration.getXlsFilePath();
-		
-		
-		
-		String orgDbfFilePath = configuration.getDbfFilePath();
+
+		final String orgDbfFilePath = configuration.getDbfFilePath();
 		String destDbfFilePath = tempFileName(orgDbfFilePath);
 
 		writeDbfFromXls(providerId, priceSymbol, decimalSymbol, xlsFilePath, orgDbfFilePath, destDbfFilePath);
 
-		try {
-			Thread.sleep(1000);
-			swapFiles(orgDbfFilePath);
-		} catch (InterruptedException e) {
-		}
+		// Thread swapFilesThread = new Thread(new Runnable() {
+		// public void run() {
+		// try {
+		// Thread.sleep(2000);
+		swapFiles(orgDbfFilePath);
+		// } catch (InterruptedException e) {
+		// }
+		// }
+		// });
+		// swapFilesThread.setDaemon(false);
+		// swapFilesThread.start();
 	}
 
 	private String tempFileName(String orgDbfFilePath) {
-		String[] split = pathNoExtensionPattern.split(timestampFileName(orgDbfFilePath));
+		String timestampFileName = timestampFileName(orgDbfFilePath);
+		String[] split = pathNoExtensionPattern.split(timestampFileName);
 
 		return split[0] + "_TEMP" + ".DBF";
 	}
@@ -69,7 +75,12 @@ public class MainApp {
 	private String timestampFileName(String orgDbfFilePath) {
 		String[] split = pathNoExtensionPattern.split(orgDbfFilePath);
 
-		return split[0] + "_" + new GregorianCalendar().getTimeInMillis() + ".DBF";
+		GregorianCalendar today = new GregorianCalendar();
+		int year = today.get(YEAR);
+		int month = today.get(MONTH) + 1;
+		int day = today.get(DATE);
+
+		return split[0] + "_" + year + month + day + ".DBF";
 	}
 
 	/**
@@ -130,11 +141,15 @@ public class MainApp {
 		dbfWriter.close();
 		logger.info("Fin de escritura de archivo dbf");
 
-		try {
-			// INTENTO CERRAR NUEVAMENTE POR LAS DUDAS...
-			dbfReader.close();
-		} catch (Exception e) {
-		}
+		// try {
+		// dbfReader.close();
+		// } catch (Exception e) {
+		// }
+		//
+		// try {
+		// dbfWriter.close();
+		// } catch (Exception e) {
+		// }
 	}
 
 	/**
@@ -144,20 +159,25 @@ public class MainApp {
 	 *            Path del archivo dbf original.
 	 * @throws InterruptedException
 	 */
-	private void swapFiles(final String orgDbfFilePath) throws InterruptedException {
+	private void swapFiles(
+			final String orgDbfFilePath) /* throws InterruptedException */ {
+		logger.info("INTERCAMBIANDO ARCHIVOS...");
+
 		File orgFile = new File(orgDbfFilePath);
 		boolean renameSuccess = orgFile.renameTo(new File(timestampFileName(orgDbfFilePath)));
 		if (renameSuccess) {
 			logger.debug("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + timestampFileName(orgDbfFilePath));
 		}
 
-		Thread.sleep(1000);
+		// Thread.sleep(1000);
 
 		File destFile = new File(tempFileName(orgDbfFilePath));
 		renameSuccess = destFile.renameTo(new File(orgDbfFilePath));
 		if (renameSuccess) {
 			logger.debug("ARCHIVO " + tempFileName(orgDbfFilePath) + " RENOMBRADO EXITOSAMENTE A " + orgDbfFilePath);
 		}
+
+		logger.info("FIN INTERCAMBIO DE ARCHIVOS...");
 	}
 
 	public static void main(String[] args) {
