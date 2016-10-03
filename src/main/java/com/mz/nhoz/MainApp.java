@@ -35,45 +35,45 @@ import com.mz.nhoz.xls.util.exception.ArticleFinderException;
 import com.mz.nhoz.xls.util.exception.CellParserException;
 
 public class MainApp {
+	private static final int MAX_SWAP_TRIES = 5;
 	static Logger logger = Logger.getLogger(MainApp.class);
 	static Pattern pathNoExtensionPattern = Pattern.compile(Pattern.quote(".") + "DBF", Pattern.CASE_INSENSITIVE);
 
-	Configuration configuration = new GuiConfiguration();
+	private Configuration configuration = new GuiConfiguration();
+
+	private String providerId;
+	private String priceSymbol;
+	private DecimalSymbol decimalSymbol;
+	private String xlsFilePath;
+
+	private String orgDbfFilePath;
+	private File orgDbfFile;
+	private File dstDbfFile;
+	private File timestampDbfFile;
 
 	void run() throws ConfigurationException, FileNotFoundException, ExcelReaderException, DbfReaderException, IOException, DbfWriterException {
 		configuration.load();
 
-		String providerId = configuration.getProviderId();
-		String priceSymbol = "$";
-		DecimalSymbol decimalSymbol = configuration.getDecimalSymbol();
-		String xlsFilePath = configuration.getXlsFilePath();
+		providerId = configuration.getProviderId();
+		priceSymbol = "$";
+		decimalSymbol = configuration.getDecimalSymbol();
+		xlsFilePath = configuration.getXlsFilePath();
 
-		final String orgDbfFilePath = configuration.getDbfFilePath();
-		String destDbfFilePath = tempFileName(orgDbfFilePath);
+		orgDbfFilePath = configuration.getDbfFilePath();
 
-		writeDbfFromXls(providerId, priceSymbol, decimalSymbol, xlsFilePath, orgDbfFilePath, destDbfFilePath);
+		orgDbfFile = new File(orgDbfFilePath);
+		dstDbfFile = new File(orgDbfFilePath);
+		timestampDbfFile = new File(timestampFileName());
 
-		// Thread swapFilesThread = new Thread(new Runnable() {
-		// public void run() {
-		// try {
-		// Thread.sleep(2000);
-		swapFiles(orgDbfFilePath);
-		// } catch (InterruptedException e) {
-		// }
-		// }
-		// });
-		// swapFilesThread.setDaemon(false);
-		// swapFilesThread.start();
+		boolean swapFilesSuccess = swapFiles();
+		if (swapFilesSuccess) {
+			writeDbfFromXls();
+		} else {
+			logger.error("IMPOSIBLE INTERCAMBIAR ARCHIVOS. ABORTANDO PROGRAMA...");
+		}
 	}
 
-	private String tempFileName(String orgDbfFilePath) {
-		String timestampFileName = timestampFileName(orgDbfFilePath);
-		String[] split = pathNoExtensionPattern.split(timestampFileName);
-
-		return split[0] + "TEMP" + ".DBF";
-	}
-
-	private String timestampFileName(String orgDbfFilePath) {
+	private String timestampFileName() {
 		String[] split = pathNoExtensionPattern.split(orgDbfFilePath);
 
 		GregorianCalendar today = new GregorianCalendar();
@@ -90,14 +90,11 @@ public class MainApp {
 	 * Escribe un Dbf nuevo a partir de un Dbf original y una lista de precios
 	 * de Excel.
 	 */
-	private void writeDbfFromXls(final String providerId, final String priceSymbol, final DecimalSymbol decimalSymbol, final String xlsFilePath,
-			final String orgDbfFilePath, final String destDbfFilePath)
-			throws ExcelReaderException, FileNotFoundException, DbfReaderException, IOException, DbfWriterException {
-
+	private void writeDbfFromXls() throws ExcelReaderException, FileNotFoundException, DbfReaderException, IOException, DbfWriterException {
 		final ExcelReader excelReader = new ExcelReader(new File(xlsFilePath));
-		final DbfReader dbfReader = new DbfReader(new File(orgDbfFilePath));
+		final DbfReader dbfReader = new DbfReader(timestampDbfFile);
 		final ArticleFinder articleFinder = new ArticleFinder(excelReader);
-		final DbfWriter dbfWriter = new DbfWriter(new File(destDbfFilePath), true);
+		final DbfWriter dbfWriter = new DbfWriter(dstDbfFile, true);
 
 		dbfReader.forEach(new DbfAction() {
 			public void run(DbfRecord dbfRecord) {
@@ -162,54 +159,26 @@ public class MainApp {
 	 *            Path del archivo dbf original.
 	 * @throws InterruptedException
 	 */
-	private void swapFiles(
-			final String orgDbfFilePath) /* throws InterruptedException */ {
+	private boolean swapFiles() {
 		logger.info("INTERCAMBIANDO ARCHIVOS...");
 
-		trySwapFiles(orgDbfFilePath, 1);
-
-		logger.info("FIN INTERCAMBIO DE ARCHIVOS...");
+		return trySwapFiles(1);
 	}
 
-	private void trySwapFiles(final String orgDbfFilePath, int tryCount) {
-		if (tryCount > 5) {
-			logger.error("LIMITE DE INTENTO DE RENOMBRAR ARCHIVOS SUPERADO.");
-			return;
+	private boolean trySwapFiles(int tryCount) {
+		if (tryCount > MAX_SWAP_TRIES) {
+			logger.error("IMPOSIBLE RENOMBRAR ARCHIVO " + orgDbfFilePath + " A " + timestampDbfFile.getAbsolutePath());
+			return false;
 		}
 		logger.info("INTENTO " + tryCount + " DE INTERCAMBIO DE ARCHIVOS...");
 		int nextTry = tryCount + 1;
 
-		File orgFile = new File(orgDbfFilePath);
-		File timestampFile = new File(timestampFileName(orgDbfFilePath));
-		File tempFile = new File(tempFileName(orgDbfFilePath));
-
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-		}
-
-		boolean orgFileRenameSuccess = orgFile.renameTo(timestampFile);
-		if (orgFileRenameSuccess) {
-			logger.info("ARCHIVO " + orgDbfFilePath + " RENOMBRADO EXITOSAMENTE A " + timestampFileName(orgDbfFilePath));
-
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-			}
-
-			boolean tempFileRenameSuccess = tempFile.renameTo(orgFile);
-			if (tempFileRenameSuccess) {
-				logger.info("ARCHIVO " + tempFile.getAbsolutePath() + " RENOMBRADO EXITOSAMENTE A " + orgDbfFilePath);
-			} else {
-				// SI FALLE EN RENOMBRAR EL ARCHIVO NUEVO DE LISTAPRE AL NOMBRE
-				// ORIGINAL "LISTAPRE-DBF" ENTONCES HAGO UN ROLLBACK RENOMBRANDO
-				// EL VIEJO LISTAPRE AL NOMBRE "LISTAPRE.DBF".
-				logger.info("RESTAURANDO NOMBRE DE ARCHIVO VIEJO...");
-				timestampFile.renameTo(orgFile);
-				trySwapFiles(orgDbfFilePath, nextTry);
-			}
+		boolean orgDbfFileRenameSuccess = orgDbfFile.renameTo(timestampDbfFile);
+		if (orgDbfFileRenameSuccess) {
+			logger.info("ARCHIVO " + orgDbfFilePath + " RENOMBRADO A " + timestampDbfFile.getAbsolutePath() + "  EXITOSAMENTE!");
+			return true;
 		} else {
-			trySwapFiles(orgDbfFilePath, nextTry);
+			return trySwapFiles(nextTry);
 		}
 	}
 
