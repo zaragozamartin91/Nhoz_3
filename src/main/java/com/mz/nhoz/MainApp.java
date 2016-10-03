@@ -35,7 +35,9 @@ import com.mz.nhoz.xls.util.exception.ArticleFinderException;
 import com.mz.nhoz.xls.util.exception.CellParserException;
 
 public class MainApp {
+	private static final String PRICE_COLUMN = "PRECIOUNI";
 	private static final int MAX_SWAP_TRIES = 5;
+
 	static Logger logger = Logger.getLogger(MainApp.class);
 	static Pattern pathNoExtensionPattern = Pattern.compile(Pattern.quote(".") + "DBF", Pattern.CASE_INSENSITIVE);
 
@@ -104,6 +106,7 @@ public class MainApp {
 
 				logger.info("Leyendo articulo: " + absoluteArticleId);
 
+				Object oldPriceValue = dbfRecord.getValue(PRICE_COLUMN);
 				if (providerId.equals(dbfRecordProviderId)) {
 					try {
 						ExcelRecord excelArticleRecord = articleFinder.find(dbfRecordArticleId.toString());
@@ -114,25 +117,33 @@ public class MainApp {
 								String stringRawPriceValue = rawPriceValue.toString();
 								String noSymbolStringPriceValue = removePriceSymbol(stringRawPriceValue, priceSymbol);
 								Double priceValue = parsePriceAsDouble(noSymbolStringPriceValue, decimalSymbol);
-								dbfRecord.setValue("PRECIOUNI", priceValue);
-								logger.debug("Articulo " + absoluteArticleId + " modificado");
+
+								dbfRecord.setValue(PRICE_COLUMN, priceValue);
+
+								logger.info("ARTICULO " + absoluteArticleId + " MODIFICADO");
 							}
 						}
 
 					} catch (ArticleFinderException e) {
-						logger.debug("Error al intentar buscar el articulo " + dbfRecordArticleId + " en archivo excel");
+						logger.info("ERROR AL BUSCAR ARTICULO " + dbfRecordArticleId + " EN ARCHIVO EXCEL");
 					} catch (CellParserException e) {
-						logger.debug("Error al parsear el contenido del articulo " + dbfRecordArticleId + " en archivo excel");
+						logger.info("ERROR AL PARSEAR CONTENIDO DE ARTICULO " + dbfRecordArticleId + " EN ARCHIVO EXCEL");
 					} catch (MoneyUtilsException e) {
-						logger.debug("Error al Interpretar el contenido del articulo " + dbfRecordArticleId + " en archivo excel");
+						logger.info("ERROR AL INTERPRETAR EL PRECIO DEL ARTICULO " + dbfRecordArticleId + " EN ARCHIVO EXCEL");
 					}
 				}
 
 				try {
-					logger.info("Guardando: " + Arrays.asList(dbfRecord.getValues()));
+					logger.info("GUARDANDO: " + Arrays.asList(dbfRecord.getValues()));
 					dbfWriter.addRecord(dbfRecord);
 				} catch (DbfWriterException e) {
-					logger.error("Error al agregar el registro " + absoluteArticleId + " al dbf destino");
+					logger.error("ERROR AL AGREGAR REGISTRO " + absoluteArticleId + " EN DBF DESTINO");
+					dbfRecord.setValue(PRICE_COLUMN, oldPriceValue);
+					try {
+						dbfWriter.addRecord(dbfRecord);
+					} catch (DbfWriterException e1) {
+						logger.error("ERROR AL RESTAURAR REGISTRO " + absoluteArticleId + " EN DFB");
+					}
 				}
 			}
 		});
@@ -140,16 +151,6 @@ public class MainApp {
 		logger.info("Escribiendo archivo dbf...");
 		dbfWriter.close();
 		logger.info("Fin de escritura de archivo dbf");
-
-		// try {
-		// dbfReader.close();
-		// } catch (Exception e) {
-		// }
-		//
-		// try {
-		// dbfWriter.close();
-		// } catch (Exception e) {
-		// }
 	}
 
 	/**

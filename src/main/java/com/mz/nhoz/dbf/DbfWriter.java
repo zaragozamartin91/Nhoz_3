@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.linuxense.javadbf.DBFException;
-import com.linuxense.javadbf.DBFField;
 import com.linuxense.javadbf.DBFWriter;
 import com.mz.nhoz.dbf.exception.DbfWriterException;
 
