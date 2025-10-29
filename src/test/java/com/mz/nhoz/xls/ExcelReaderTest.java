@@ -53,9 +53,14 @@ public class ExcelReaderTest {
 		xlsRowIterator.next();
 		while (xlsRowIterator.hasNext()) {
 			ExcelRecord excelRecord = (ExcelRecord) xlsRowIterator.next();
-			Object priceValue = excelRecord.getCellValue(1);
-			String noSymbolPriceValue = MoneyUtils.removePriceSymbol(priceValue.toString());
-			System.out.println(MoneyUtils.parsePriceAsDouble(noSymbolPriceValue, DecimalSymbol.DOT));
+            Object articleKey = excelRecord.getCellValue(0);
+            Object priceValue = excelRecord.getCellValue(1);
+            System.out.println("ArticleKey: " + articleKey + " ; PriceValue: " + priceValue);
+
+            if (priceValue != null ) {
+                String noSymbolPriceValue = MoneyUtils.removePriceSymbol(priceValue.toString());
+                System.out.println(MoneyUtils.parsePriceAsDouble(noSymbolPriceValue, DecimalSymbol.DOT));
+            }
 		}
 
 	}

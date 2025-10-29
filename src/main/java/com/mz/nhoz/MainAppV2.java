@@ -85,6 +85,7 @@ public class MainAppV2 {
 		try {
 			try {
 				Files.copy(dbfFile.toPath(), timestampDbfFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                logger.info("Archivo de backup " + timestampDbfFile.toPath() + " creado");
 			} catch (IOException e) {
 				logger.error("Error al copiar el archivo dbf origen " + dbfFile.getAbsolutePath(), e);
 				throw e;
@@ -186,7 +187,7 @@ public class MainAppV2 {
 			try {
 				writeTable.close();
 				readTable.close();
-			} catch (Exception e) {
+			} catch (Exception ignored) {
 			}
 
 			Files.move(timestampDbfFile.toPath(), dbfFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
