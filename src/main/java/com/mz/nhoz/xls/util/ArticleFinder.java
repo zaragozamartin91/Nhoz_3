@@ -51,10 +51,6 @@ public class ArticleFinder {
 				throw new ArticleFinderException("Error al obtener el codigo de articulo " + articleIndex);
 			}
 
-			if (cellValue == null) {
-				continue;
-			}
-
 			if (equalIds(articleId, cellValue.toString())) {
 				return excelRecord;
 			}
@@ -63,10 +59,14 @@ public class ArticleFinder {
 		return ExcelRecord.newNullRecord();
 	}
 
-	private boolean equalIds(String articleId, String cellValue) {
+	private boolean equalIds(String articleId, Object cellValue) {
+        if (cellValue == null) return false;
+
 		try {
-			return articleId.equals(cellValue) || equalAsStrings(articleId, cellValue)
-					|| removeLeadingZeroes(articleId).equals(removeLeadingZeroes(cellValue)) || equalAsIntegers(articleId, cellValue)
+			return articleId.equals(cellValue)
+                    || equalAsStrings(articleId, cellValue)
+					|| removeLeadingZeroes(articleId).equals(removeLeadingZeroes(cellValue.toString()))
+                    || equalAsIntegers(articleId, cellValue)
 					|| equalAsDoubles(articleId, cellValue);
 		} catch (Exception e) {
 			LOGGER.error("Error al comparar " + articleId + " con " + cellValue, e);
