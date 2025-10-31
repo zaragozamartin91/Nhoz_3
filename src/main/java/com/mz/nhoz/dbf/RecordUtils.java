@@ -64,6 +64,18 @@ public class RecordUtils {
 		}
 	}
 
+    public static Number utility(Record record) {
+        return record.getNumberValue("UTILIDAD");
+    }
+
+    public static Number saleValue(Record record) {
+        return record.getNumberValue("RAZON");
+    }
+
+    public static Number priceValue(Record record) {
+        return record.getNumberValue("PRECIOUNI");
+    }
+
 	public static String articleId(Record record) {
 		return record.getStringValue("ARTICULO");
 	}

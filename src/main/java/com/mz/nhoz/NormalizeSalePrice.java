@@ -1,65 +1,53 @@
 package com.mz.nhoz;
 
-import static com.mz.nhoz.util.MoneyUtils.parsePriceAsDouble;
-import static com.mz.nhoz.util.MoneyUtils.removePriceSymbol;
-import static java.util.Calendar.DATE;
-import static java.util.Calendar.MONTH;
-import static java.util.Calendar.YEAR;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.regex.Pattern;
-
-import com.mz.nhoz.config.exception.GuiConfigurationAbortException;
-import nl.knaw.dans.common.dbflib.IfNonExistent;
-import nl.knaw.dans.common.dbflib.Record;
-import nl.knaw.dans.common.dbflib.Table;
-
-import org.apache.log4j.Logger;
-
 import com.mz.nhoz.config.Configuration;
+import com.mz.nhoz.config.exception.GuiConfigurationAbortException;
 import com.mz.nhoz.config.impl.GuiConfiguration;
 import com.mz.nhoz.dbf.RecordUtils;
 import com.mz.nhoz.dbf.exception.RecordUtilsException;
-import com.mz.nhoz.util.DecimalSymbol;
-import com.mz.nhoz.util.exception.MoneyUtilsException;
+import com.mz.nhoz.util.DateUtils;
+import com.mz.nhoz.util.NumberUtils;
 import com.mz.nhoz.xls.ExcelReader;
 import com.mz.nhoz.xls.ExcelRecord;
 import com.mz.nhoz.xls.exception.ExcelReaderException;
 import com.mz.nhoz.xls.util.ArticleFinder;
 import com.mz.nhoz.xls.util.exception.ArticleFinderException;
-import com.mz.nhoz.xls.util.exception.CellParserException;
+import nl.knaw.dans.common.dbflib.IfNonExistent;
+import nl.knaw.dans.common.dbflib.Record;
+import nl.knaw.dans.common.dbflib.Table;
+import org.apache.log4j.Logger;
 
-public class MainAppV2 {
-	private static final String PRICE_COLUMN = "PRECIOUNI";
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.regex.Pattern;
 
-	static Logger logger = Logger.getLogger(MainAppV2.class);
+public class NormalizeSalePrice {
+	private static final String SALE_VALUE_COLUMN = "RAZON";
+
+	static Logger logger = Logger.getLogger(NormalizeSalePrice.class);
 	static Pattern pathNoExtensionPattern = Pattern.compile(Pattern.quote(".") + "DBF", Pattern.CASE_INSENSITIVE);
 
-	private Configuration configuration = new GuiConfiguration();
-
-	private String providerId;
-	private String priceSymbol;
-	private DecimalSymbol decimalSymbol;
-	private String xlsFilePath;
-
-	private String orgDbfFilePath;
+	private final Configuration configuration;
+    private String orgDbfFilePath;
 	private File dbfFile;
 	private File timestampDbfFile;
-
 	private ArticleFinder articleFinder;
-
 	private Table writeTable;
-
 	private Table readTable;
 
-	void run() {
+    public NormalizeSalePrice() {
+        HashSet<String> configToggles = new HashSet<>();
+        configToggles.add("dbf");
+        configToggles.add("xls");
+        configuration = new GuiConfiguration(configToggles);
+    }
+
+    void run() {
 		try {
 			configuration.load();
 		} catch (GuiConfigurationAbortException e) {
@@ -70,24 +58,22 @@ public class MainAppV2 {
 			return;
 		}
 
-		providerId = configuration.getProviderId();
-		priceSymbol = "$";
-		decimalSymbol = configuration.getDecimalSymbol();
-		xlsFilePath = configuration.getXlsFilePath();
-
+        String xlsFilePath = configuration.getXlsFilePath();
 		orgDbfFilePath = configuration.getDbfFilePath();
 
 		dbfFile = new File(orgDbfFilePath);
 		timestampDbfFile = timestampFile();
 
+        ExcelReader excelReader;
 		try {
-			articleFinder = new ArticleFinder(new ExcelReader(new File(xlsFilePath)));
+            excelReader = new ExcelReader(new File(xlsFilePath));
+            articleFinder = new ArticleFinder(excelReader);
 		} catch (ExcelReaderException e1) {
 			logger.error("Error al abrir el archivo excel " + configuration.getXlsFilePath(), e1);
-			return;
+            return;
 		}
 
-		try {
+        try {
 			try {
 				Files.copy(dbfFile.toPath(), timestampDbfFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 logger.info("Archivo de backup " + timestampDbfFile.toPath() + " creado");
@@ -100,17 +86,12 @@ public class MainAppV2 {
 			readTable = new Table(timestampDbfFile);
 
 			openTables();
-
 			deleteRecords();
 
 			Iterator<Record> recordIterator = readTable.recordIterator();
 			while (recordIterator.hasNext()) {
 				Record record = (Record) recordIterator.next();
-				String recordProvider = RecordUtils.providerId(record);
-
-				if (providerId.equals(recordProvider)) {
-					parseRecord(record);
-				}
+                transformRecord(record);
 
 				writeTable.addRecord(record);
 			}
@@ -122,39 +103,40 @@ public class MainAppV2 {
 		}
 	}
 
-	private void parseRecord(Record record) {
-		String articleId = RecordUtils.articleId(record);
+	private void transformRecord(Record record) {
+        String recordProviderId = RecordUtils.providerId(record);
+        String recordArticleId = RecordUtils.articleId(record);
         Number originalPriceValue = RecordUtils.priceValue(record);
-        String absArticleId = providerId + "::" + articleId;
+        Number originalSaleValue = RecordUtils.saleValue(record);
+        Number utilityValue = RecordUtils.utility(record);
+
+        String absArticleId = recordProviderId + "::" + recordArticleId;
 
 		try {
-			ExcelRecord excelRecord = articleFinder.find(articleId);
-			if (excelRecord.isNull()) {
+			ExcelRecord excelRecord = articleFinder.findByProviderAndArticle(recordProviderId, recordArticleId);
+			/* If there's no matching excel record, then avoid transforming the record */
+            if (excelRecord.isNull()) {
 				return;
 			}
 
-			Object rawPriceValue = excelRecord.getCellValue(1);
+            /* If the utility value is null , zero or negative then avoid transforming the record */
+            if (utilityValue == null || utilityValue.doubleValue() <= 0d) {
+                return;
+            }
 
-			if (rawPriceValue == null) {
-				return;
-			}
+            /* If the new sale value is lower than the current one, then avoid transforming the record */
+            double newSaleValue = NumberUtils.augment(originalPriceValue.doubleValue(), utilityValue.doubleValue());
+            if (originalSaleValue.doubleValue() > newSaleValue) {
+                logger.info("ARTICULO " + absArticleId + " IGNORADO ; PRECIO ACTUAL DE VENTA SUPERIOR A PRECIO CON UTILIDAD");
+                return;
+            }
 
-			String stringRawPriceValue = rawPriceValue.toString();
-			String noSymbolStringPriceValue = removePriceSymbol(stringRawPriceValue, priceSymbol);
-			Double priceValue = parsePriceAsDouble(noSymbolStringPriceValue, decimalSymbol);
-
-			RecordUtils.setValue(record, PRICE_COLUMN, priceValue);
-
-			logger.info("ARTICULO " + absArticleId + " MODIFICADO ; " + "Precio " + originalPriceValue + " => " + priceValue);
-
+			RecordUtils.setValue(record, SALE_VALUE_COLUMN, newSaleValue);
+			logger.info("ARTICULO " + absArticleId + " MODIFICADO ; " + "Razon " + originalSaleValue + " => " + newSaleValue);
 		} catch (ArticleFinderException e) {
 			logger.error("Error al buscar el articulo " + absArticleId + " en archivo excel", e);
-		} catch (CellParserException e) {
-			logger.error("Error al parsear celda de precio de articulo " + absArticleId + " en archivo excel", e);
-		} catch (MoneyUtilsException e) {
-			logger.error("Error al interpretar precio de articulo " + absArticleId + " en archivo excel", e);
 		} catch (RecordUtilsException e) {
-			logger.error("Error al modificar campo " + PRICE_COLUMN + " de articulo " + absArticleId + " en archivo excel", e);
+			logger.error("Error al modificar campo " + SALE_VALUE_COLUMN + " de articulo " + absArticleId + " en archivo excel", e);
 		}
 	}
 
@@ -204,15 +186,8 @@ public class MainAppV2 {
 
 	private String timestampFileName() {
 		String[] split = pathNoExtensionPattern.split(orgDbfFilePath);
-
-		GregorianCalendar today = new GregorianCalendar();
-		int year = today.get(YEAR);
-		int month = today.get(MONTH) + 1;
-		int day = today.get(DATE);
-		int hour = today.get(Calendar.HOUR_OF_DAY);
-		int minute = today.get(Calendar.MINUTE);
-
-		return split[0] + "-" + year + "-" + month + "-" + day + "-" + hour + "-" + minute + ".DBF";
+        String dateTimeKey = DateUtils.dateTimeKey(LocalDateTime.now());
+        return split[0] + "-" + dateTimeKey + ".DBF";
 	}
 
 	private File timestampFile() {
@@ -220,7 +195,7 @@ public class MainAppV2 {
 	}
 
 	public static void main(String[] args) {
-		new MainAppV2().run();
+		new NormalizeSalePrice().run();
 		logger.info("FIN");
 	}
 }

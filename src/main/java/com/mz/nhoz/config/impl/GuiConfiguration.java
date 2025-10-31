@@ -1,74 +1,95 @@
 package com.mz.nhoz.config.impl;
 
+import java.awt.*;
 import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
 
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
+import javax.swing.*;
 
-import org.apache.log4j.Logger;
+import com.mz.nhoz.config.exception.GuiConfigurationAbortException;
 
 import com.mz.nhoz.config.exception.ConfigurationException;
 import com.mz.nhoz.util.DecimalSymbol;
 import com.mz.nhoz.util.StringUtils;
 
 public class GuiConfiguration extends AbstractConfiguration {
-	Logger logger = Logger.getLogger(GuiConfiguration.class);
-	private boolean cancel = false;
+    private final Set<String> configToggles;
 
-	@Override
-	public void load() throws ConfigurationException {
-		setDbfFilePath(chooseFile("SELECCIONE ARCHIVO DBF").getAbsolutePath());
-		if (cancel) {
-			throw new ConfigurationException("PROCESO DE CONFIGURAICON CANCELADO");
-		}
+    public GuiConfiguration(Set<String> configToggles) {
+        this.configToggles = configToggles;
+    }
 
-		setXlsFilePath(chooseFile("SELECCIONE ARCHIVO XLS").getAbsolutePath());
-		if (cancel) {
-			throw new ConfigurationException("PROCESO DE CONFIGURAICON CANCELADO");
-		}
+    public GuiConfiguration() {
+        HashSet<String> toggles = new HashSet<>();
+        toggles.add("dbf");
+        toggles.add("xls");
+        toggles.add("provider");
+        toggles.add("decimalSymbol");
+        this.configToggles = toggles;
+    }
 
-		setProviderId(readProviderId("INGRESE EL CODIGO DE PROVEEDOR"));
+    @Override
+	public void load() throws GuiConfigurationAbortException {
+        if (configToggles.contains("dbf")) setDbfFilePath(chooseFile("SELECCIONE ARCHIVO DBF").getAbsolutePath());
 
-		setDecimalSymbol(readDecimalSymbol("INGRESE EL SEPARADOR DECIMAL"));
+        if (configToggles.contains("xls"))  setXlsFilePath(chooseFile("SELECCIONE ARCHIVO XLS").getAbsolutePath());
+
+        if (configToggles.contains("provider")) setProviderId(readProviderId("INGRESE EL CODIGO DEL PROVEEDOR A ACTUALIZAR"));
+
+        if (configToggles.contains("decimalSymbol")) setDecimalSymbol(readDecimalSymbol("INGRESE EL SEPARADOR DECIMAL DE LOS PRECIOS DEL ARCHIVO EXCEL"));
 	}
 
-	private DecimalSymbol readDecimalSymbol(String message) {
-		String decimalDelim = JOptionPane.showInputDialog(message, ".");
-		if (StringUtils.nullOrEmpty(decimalDelim)) {
-			return readDecimalSymbol(message);
-		}
+    private DecimalSymbol readDecimalSymbol(String message) {
+        // Create radio buttons
+        JRadioButton dot = new JRadioButton("PUNTO ( . )");
+        JRadioButton comma = new JRadioButton("COMA ( , )");
+        dot.setSelected(true); // Default selection
 
-		DecimalSymbol decimalSymbol = null;
-		DecimalSymbol[] decimalSymbols = DecimalSymbol.values();
-		for (DecimalSymbol decSym : decimalSymbols) {
-			if (decSym.symbol.equals(decimalDelim)) {
-				decimalSymbol = decSym;
-				break;
-			}
-		}
+        // Group radio buttons so only one can be selected
+        ButtonGroup group = new ButtonGroup();
+        group.add(dot);
+        group.add(comma);
 
-		if (decimalSymbol == null) {
-			return readDecimalSymbol(message);
-		}
+        // Create panel and add components
+        JPanel panel = new JPanel(new GridLayout(0, 1));
+        panel.add(new JLabel(message));
+        panel.add(dot);
+        panel.add(comma);
 
-		return decimalSymbol;
-	}
+        // Show dialog
+        int result = JOptionPane.showConfirmDialog(
+                null,
+                panel,
+                "Input",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (result == JOptionPane.CANCEL_OPTION) {
+            throw new GuiConfigurationAbortException("Lectura de simbolo decimal abortada");
+        }
+
+        if (dot.isSelected()) return DecimalSymbol.DOT;
+
+        if (comma.isSelected()) return DecimalSymbol.COMMA;
+
+        return this.readDecimalSymbol(message);
+    }
+
 
 	private File chooseFile(String dialogTitle) {
 		JFileChooser fc = new JFileChooser(new File("."));
 		fc.setDialogTitle(dialogTitle);
 		int returnVal = fc.showOpenDialog(null);
 
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			return fc.getSelectedFile();
-		} else if (returnVal == JFileChooser.CANCEL_OPTION) {
-			cancel = true;
-			// return new File(".");
-			System.exit(1);
-			return null;
-		} else {
-			return chooseFile(dialogTitle);
+		if (returnVal == JFileChooser.APPROVE_OPTION) return fc.getSelectedFile();
+
+        if (returnVal == JFileChooser.CANCEL_OPTION) {
+            throw new GuiConfigurationAbortException("Seleccion de archivo abortada");
 		}
+
+        return chooseFile(dialogTitle);
 	}
 
 	private String readProviderId(String message) {
@@ -82,7 +103,7 @@ public class GuiConfiguration extends AbstractConfiguration {
 	}
 
 	public static void main(String[] args) throws ConfigurationException {
-		GuiConfiguration guiConfiguration = new GuiConfiguration();
+		GuiConfiguration guiConfiguration = new GuiConfiguration(new HashSet());
 		guiConfiguration.load();
 
 		System.out.println(guiConfiguration);

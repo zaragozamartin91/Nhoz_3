@@ -42,24 +42,49 @@ public class ArticleFinder {
 	 */
 	public ExcelRecord find(String articleId) throws ArticleFinderException {
 		int articleIndex = 0;
+        return find(articleId, articleIndex);
+    }
 
-		for (ExcelRecord excelRecord : reader) {
-			Object cellValue;
-			try {
-				cellValue = excelRecord.getCellValue(0);
-			} catch (CellParserException e) {
-				throw new ArticleFinderException("Error al obtener el codigo de articulo " + articleIndex);
-			}
+    public ExcelRecord find(String articleId, int articleIndex) throws ArticleFinderException {
+        for (ExcelRecord excelRecord : reader) {
+            Object cellValue;
+            try {
+                cellValue = excelRecord.getCellValue(articleIndex);
+            } catch (CellParserException e) {
+                throw new ArticleFinderException("Error al obtener el codigo de articulo " + articleId + " en la columna " + articleIndex);
+            }
 
-			if (equalIds(articleId, cellValue.toString())) {
-				return excelRecord;
-			}
-		}
+            if (equalIds(articleId, cellValue.toString())) {
+                return excelRecord;
+            }
+        }
 
-		return ExcelRecord.newNullRecord();
-	}
+        return ExcelRecord.newNullRecord();
+    }
 
-	private boolean equalIds(String articleId, Object cellValue) {
+    public ExcelRecord findByProviderAndArticle(
+            String providerId,
+            String articleId) throws ArticleFinderException {
+        for (ExcelRecord excelRecord : reader) {
+            Object providerCellValue;
+            Object articleCellValue;
+            try {
+                providerCellValue = excelRecord.getCellValue(0);
+                articleCellValue = excelRecord.getCellValue(1);
+            } catch (CellParserException e) {
+                throw new ArticleFinderException("Error al obtener el codigo de articulo " + providerId + "::" + articleId);
+            }
+
+            if (equalIds(providerId, providerCellValue) && equalIds(articleId, articleCellValue)) {
+                return excelRecord;
+            }
+        }
+
+        return ExcelRecord.newNullRecord();
+    }
+
+
+    private boolean equalIds(String articleId, Object cellValue) {
         if (cellValue == null) return false;
 
 		try {

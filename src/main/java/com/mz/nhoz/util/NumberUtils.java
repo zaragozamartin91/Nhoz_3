@@ -2,6 +2,9 @@ package com.mz.nhoz.util;
 
 import com.mz.nhoz.util.exception.NumberUtilsException;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 public class NumberUtils {
 	public static final String DOUBLE_REGEX = "[-+]?[0-9]*[\\.,]?[0-9]+[\\.,]?[0-9]*";
 
@@ -111,5 +114,13 @@ public class NumberUtils {
 			return false;
 		}
 	}// tryCompareObjectsAsIntegers
+
+    public static double augment(double value, double percMinorUnit) {
+        BigDecimal bdPrice = BigDecimal.valueOf(value);
+        BigDecimal bdUtility = BigDecimal.valueOf(percMinorUnit);
+        BigDecimal bdIncrease = bdUtility.divide(BigDecimal.valueOf(100L), RoundingMode.HALF_UP).add(BigDecimal.ONE);
+        BigDecimal bdNormalizedSalePrice = bdPrice.multiply(bdIncrease);
+        return bdNormalizedSalePrice.doubleValue();
+    }
 
 }
